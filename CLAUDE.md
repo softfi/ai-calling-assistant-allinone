@@ -62,6 +62,7 @@ AI Revenue Operations Platform for Indian lead-driven SMBs: lead capture → hum
 - If you hit something that needs a real external account (Meta, Exotel, etc.), build against the Fake adapter and add an item to "Blocked on external" in PROGRESS.md.
 - Do not add new dependencies without stating why; prefer what's already in the stack.
 - Commands and scripts must work on Windows, macOS and Linux (use Node scripts / cross-env, not bash-only scripts).
+- **Pushing:** always `git push -u origin <current-branch>` with the branch named explicitly (`milestone/*`, `spike/*`, `fix/*`, `chore/*`). Never rely on upstream tracking (no bare `git push`, no `HEAD` refspecs), never push to `main`, never force, never push tags/all/mirror, never push to a remote other than `origin`. `.claude/settings.json` denies these forms.
 
 ## Cost & speed (token budget)
 - **No parallel subagents / orchestration.** Do tasks in this one session, sequentially, slice by slice — even if a prompt suggests splitting work across agents.
