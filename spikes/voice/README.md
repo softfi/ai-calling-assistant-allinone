@@ -21,6 +21,9 @@ Three pipelines to compare (`VOICE_COMBO`):
 Every turn's latency (end of caller speech → first audio byte) is logged to
 `results/metrics-<combo>.jsonl`; `summarize.py` prints p50/p90 per combo.
 
+## Quick start (talk to it)
+`uv run python talk.py` — Gemini Live (combo G) on the built-in mic. Other combos: `uv run python talk.py A` (A/B/C/D/G); other mic: `uv run python talk.py G <device id>`.
+
 ## Run
 1. `cp .env.example .env.local` and fill in the LiveKit Cloud keys (and `SARVAM_API_KEY` for B,
    `CARTESIA_VOICE` for A). `.env.local` is gitignored.
