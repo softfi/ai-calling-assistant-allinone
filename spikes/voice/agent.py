@@ -33,9 +33,10 @@ from livekit.agents import (
     TurnHandlingOptions,
     function_tool,
     inference,
+    room_io,
 )
 from livekit.agents.inference.realtime import RealtimeModel
-from livekit.plugins import sarvam
+from livekit.plugins import ai_coustics, sarvam
 
 load_dotenv(".env.local")
 log = logging.getLogger("voice-spike")
@@ -110,6 +111,23 @@ def describe(combo: str, parts: dict[str, Any]) -> str:
         names.append(f"{key}={model}")
     voice = getattr(getattr(parts.get("tts"), "_opts", None), "voice", None)
     return f"combo {combo}: " + ", ".join(names) + (f", voice={voice}" if voice else "")
+
+
+# Noise (2026-11-20): enhanced noise cancellation on the caller's audio, applied in LiveKit Cloud
+# rooms (browser playground, and later SIP calls). Console mode reads the mic itself and only has
+# basic WebRTC suppression — test noise in the playground. NOISE=quail (default; background noise
+# suppression, free on LiveKit Cloud) | voicefocus (voice isolation: also removes other people
+# talking nearby; paid) | off.
+NOISE_MODELS = {
+    "quail": ai_coustics.EnhancerModel.QUAIL_L,
+    "voicefocus": ai_coustics.EnhancerModel.QUAIL_VF_S,
+}
+NOISE = os.getenv("NOISE", "quail").lower()
+
+
+def noise_filter() -> Any:
+    model = NOISE_MODELS.get(NOISE)
+    return ai_coustics.audio_enhancement(model=model) if model is not None else None
 
 
 # Listening (2026-11-20 tuning): callers pause mid-sentence ("Mujhe... 2 BHK chahiye"), and the
@@ -197,13 +215,13 @@ def _append(name: str, record: dict[str, Any]) -> None:
 server = AgentServer()
 
 
-@server.rtc_session(agent_name="voice-spike")
+@server.rtc_session(agent_name=os.getenv("AGENT_NAME", ""))
 async def entrypoint(ctx: agents.JobContext) -> None:
     combo = os.getenv("VOICE_COMBO", "A").upper()
     if combo not in COMBOS:
         raise SystemExit(f"VOICE_COMBO must be one of {sorted(COMBOS)}, got {combo!r}")
     parts = COMBOS[combo]()
-    banner = describe(combo, parts)
+    banner = f"{describe(combo, parts)}, noise={NOISE}"
     print(f"\n=== {banner} ===\n")
     log.info(banner)
     if combo in REALTIME:
@@ -231,7 +249,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         data = metrics.model_dump() if hasattr(metrics, "model_dump") else vars(metrics)
         _append(f"metrics-{combo}.jsonl", {"type": type(metrics).__name__, **data})
 
-    await session.start(room=ctx.room, agent=QualificationAgent(combo))
+    await session.start(
+        room=ctx.room,
+        agent=QualificationAgent(combo),
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(noise_cancellation=noise_filter()),
+        ),
+    )
     await session.generate_reply(
         instructions="Caller ko Hinglish mein namaste karke greet karein, apna naam Riya bataayein "
         "aur poochhein ki aap unki kya madad kar sakti hain."

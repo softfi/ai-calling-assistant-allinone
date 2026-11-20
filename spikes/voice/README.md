@@ -23,6 +23,7 @@ Every turn's latency (end of caller speech → first audio byte) is logged to
 
 ## Quick start (talk to it)
 `uv run python talk.py` — Gemini Live (combo G) on the built-in mic. Other combos: `uv run python talk.py A` (A/B/C/D/G); other mic: `uv run python talk.py G <device id>`.
+Browser (with noise cancellation): `uv run python talk.py G web`, then LiveKit Cloud dashboard → Agents → Agent Console → start a session.
 
 ## Run
 1. `cp .env.example .env.local` and fill in the LiveKit Cloud keys (and `SARVAM_API_KEY` for B,

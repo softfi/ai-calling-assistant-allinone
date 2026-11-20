@@ -5,6 +5,7 @@ description = "S1 throwaway spike: Hinglish qualification bot on LiveKit Agents 
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "livekit-agents[sarvam,turn-detector]==1.8.13",
+    "livekit-plugins-ai-coustics>=0.3.6",
     "python-dotenv==1.2.1",
 ]
 

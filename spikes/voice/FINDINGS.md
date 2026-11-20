@@ -53,6 +53,11 @@ must confirm EOU/turn-detection delay keeps the p50 under 1.2 s.
 - Endpointing tuning was active in that run: Dev found responses better than before; first complete qualification saved (30 turns total, p50 1.23 s).
 - New combo **G** = **Gemini 3.8 Live** (speech-to-speech via LiveKit Inference), voice "Leda" (female): text-mode check: natural Hinglish ("Namaste ji. Main Riya hoon…"), one question at a time, `save_qualification` with correct values. Needs a live mic test for voice/accent and latency.
 
+## 7. Background noise (2026-11-20)
+- Dev: Gemini Live (G) is good so far; it picks up a lot of background noise.
+- Enhanced noise cancellation now on for every room session: **ai-coustics Quail** (background suppression, free on LiveKit Cloud) by default; `NOISE=voicefocus` (Voice Focus S: voice isolation, also removes other voices; paid) or `off`. For phone callers later: Krisp VIVA telephony or Voice Focus on the SIP participant.
+- Console mode bypasses room audio (own mic reader, basic WebRTC suppression only), so noise is tested in the browser **Agent Console** (LiveKit Cloud dashboard) with `talk.py G web`; the worker no longer needs an agent name (automatic dispatch).
+
 ## Still to do
 - Live conversations (mic or phone) per combo → real EOU delay, barge-in, p50/p90 (`summarize.py`).
 - Sarvam (combo B) once `SARVAM_API_KEY` is available — the Indian-built alternative.
