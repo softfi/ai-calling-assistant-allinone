@@ -14,6 +14,8 @@ Three pipelines to compare (`VOICE_COMBO`):
 |---|---|---|---|---|
 | A | Speechmatics Oak-1, `multi` (LiveKit Inference) | Gemma 4 31B (Inference) | Cartesia Sonic-3, Hindi (Inference) | LiveKit only |
 | B | Sarvam Saaras v4, `codemix` | Gemma 4 31B (Inference) | Sarvam Bulbul v4 flash | LiveKit + Sarvam |
+| G | Gemini 3.8 Live — speech-to-speech (hears and speaks Hindi natively) | — | voice `GEMINI_LIVE_VOICE` (default Leda, female) | LiveKit only |
+| D | Speechmatics Oak-1 | Gemma 4 31B | Gemini 3.8 flash TTS, voice Leda (female) | LiveKit only |
 | C | OpenAI GPT-Live Transcribe, `multi` (Inference) | Gemini 3.5 flash-lite (Inference) | Gemini 3.8 flash TTS (Inference) | LiveKit only |
 
 Every turn's latency (end of caller speech → first audio byte) is logged to
@@ -27,7 +29,7 @@ Every turn's latency (end of caller speech → first audio byte) is logged to
    (`--list-devices` shows ids; on the dev laptop the built-in "Microphone Array" is 2, the
    default jack input is silent — symptom: greeting plays, your speech gets no reply), or
    `uv run python agent.py dev` and open the Agents Playground for your LiveKit project.
-4. Switch pipelines with `VOICE_COMBO=B` (in `.env.local`) and repeat.
+4. Switch pipelines with `VOICE_COMBO` — in PowerShell: `$env:VOICE_COMBO="G"` before the run command (overrides .env.local). The bot prints `=== combo … ===` at start so you can see what is running.
 5. `uv run python summarize.py` — latency table per combo.
 
 No-microphone benchmarks: `bench_llm.py` (scripted Hinglish caller vs 3 LLMs) and

@@ -48,6 +48,11 @@ must confirm EOU/turn-detection delay keeps the p50 under 1.2 s.
 - New combo **D** = Oak-1 + Gemma 4 + Gemini TTS "Leda" (female, works now; ~0.7 s slower first audio than Cartesia).
 - Listening: endpointing **dynamic, min 0.8 s / max 2.5 s** (was fixed 0.5 / 3.0) so mid-sentence pauses don't end the turn and long waits are capped; interruptions need ≥ 0.6 s and ≥ 2 words (backchannels like "haan" no longer cut Riya off). Tunable via `ENDPOINTING_MIN/MAX`.
 
+## 6. Dev test of "D" + Gemini Live (2026-11-20)
+- Dev's "combo D" run actually ran **A** (metrics: speechmatics/oak-1 + gemma-4 + cartesia default male voice) — `VOICE_COMBO=D` wasn't picked up from .env.local. The bot now prints the active pipeline at startup; a shell `VOICE_COMBO` overrides .env.local.
+- Endpointing tuning was active in that run: Dev found responses better than before; first complete qualification saved (30 turns total, p50 1.23 s).
+- New combo **G** = **Gemini 3.8 Live** (speech-to-speech via LiveKit Inference), voice "Leda" (female): text-mode check: natural Hinglish ("Namaste ji. Main Riya hoon…"), one question at a time, `save_qualification` with correct values. Needs a live mic test for voice/accent and latency.
+
 ## Still to do
 - Live conversations (mic or phone) per combo → real EOU delay, barge-in, p50/p90 (`summarize.py`).
 - Sarvam (combo B) once `SARVAM_API_KEY` is available — the Indian-built alternative.

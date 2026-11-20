@@ -34,6 +34,7 @@ from livekit.agents import (
     function_tool,
     inference,
 )
+from livekit.agents.inference.realtime import RealtimeModel
 from livekit.plugins import sarvam
 
 load_dotenv(".env.local")
@@ -88,6 +89,28 @@ COMBOS: dict[str, Callable[[], dict[str, Any]]] = {
         ),
     },
 }
+
+# G — Gemini Live speech-to-speech (Dev suggestion, 2026-11-20): hears and speaks Hindi/Hinglish
+# natively — no separate STT/TTS, so no "American TTS reading Hinglish". Female voice by default.
+REALTIME = {"G": "google/gemini-3.8-live"}
+GEMINI_LIVE_VOICE = os.getenv("GEMINI_LIVE_VOICE", "Leda")
+COMBOS["G"] = lambda: {
+    "llm": RealtimeModel(model=REALTIME["G"], voice=GEMINI_LIVE_VOICE),
+}
+
+
+def describe(combo: str, parts: dict[str, Any]) -> str:
+    """One line naming the models in use (no secrets) — printed at startup."""
+    if combo in REALTIME:
+        return f"combo {combo}: {REALTIME[combo]} (speech-to-speech), voice {GEMINI_LIVE_VOICE}"
+    names = []
+    for key in ("stt", "llm", "tts"):
+        part = parts.get(key)
+        model = getattr(part, "model", None) or type(part).__name__
+        names.append(f"{key}={model}")
+    voice = getattr(getattr(parts.get("tts"), "_opts", None), "voice", None)
+    return f"combo {combo}: " + ", ".join(names) + (f", voice={voice}" if voice else "")
+
 
 # Listening (2026-11-20 tuning): callers pause mid-sentence ("Mujhe... 2 BHK chahiye"), and the
 # default 0.5 s silence ended their turn early. Dynamic endpointing starts at 0.8 s and adapts to
@@ -180,18 +203,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if combo not in COMBOS:
         raise SystemExit(f"VOICE_COMBO must be one of {sorted(COMBOS)}, got {combo!r}")
     parts = COMBOS[combo]()
-    session: AgentSession = AgentSession(
-        **parts,
-        turn_handling=TurnHandlingOptions(
-            turn_detection=inference.TurnDetector(),
-            endpointing={
-                "mode": "dynamic",
-                "min_delay": ENDPOINTING_MIN,
-                "max_delay": ENDPOINTING_MAX,
-            },
-            interruption={"min_duration": 0.6, "min_words": 2},
-        ),
-    )
+    banner = describe(combo, parts)
+    print(f"\n=== {banner} ===\n")
+    log.info(banner)
+    if combo in REALTIME:
+        # The realtime model does its own turn detection (server-side VAD).
+        session: AgentSession = AgentSession(**parts)
+    else:
+        session = AgentSession(
+            **parts,
+            turn_handling=TurnHandlingOptions(
+                turn_detection=inference.TurnDetector(),
+                endpointing={
+                    "mode": "dynamic",
+                    "min_delay": ENDPOINTING_MIN,
+                    "max_delay": ENDPOINTING_MAX,
+                },
+                interruption={"min_duration": 0.6, "min_words": 2},
+            ),
+        )
 
     @session.on("metrics_collected")
     def _on_metrics(ev: MetricsCollectedEvent) -> None:
