@@ -51,8 +51,9 @@ COMBOS: dict[str, Callable[[], dict[str, Any]]] = {
         "llm": inference.LLM(model=LLM_MODEL),
         "tts": inference.TTS(
             model="cartesia/sonic-3",
-            voice=os.getenv("CARTESIA_VOICE", ""),
             language="hi",
+            # Default Cartesia voice is an American male; set a female Indian voice id.
+            **({"voice": os.environ["CARTESIA_VOICE"]} if os.getenv("CARTESIA_VOICE") else {}),
         ),
     },
     # B — Sarvam (Indian stack, own API key): Saaras v4 in codemix mode + Bulbul v4 flash.
@@ -69,15 +70,38 @@ COMBOS: dict[str, Callable[[], dict[str, Any]]] = {
     "C": lambda: {
         "stt": inference.STT(model="openai/gpt-live-transcribe", language="multi"),
         "llm": inference.LLM(model=os.getenv("LLM_MODEL", "google/gemini-3.5-flash-lite")),
-        "tts": inference.TTS(model="google/gemini-3.8-flash-tts", language="hi"),
+        "tts": inference.TTS(
+            model="google/gemini-3.8-flash-tts",
+            voice=os.getenv("GEMINI_VOICE", "Leda"),
+            language="hi",
+        ),
+    },
+    # D — female voice today without extra keys: A's STT + LLM, Gemini TTS female voice
+    # ("Leda" ≈ 216 Hz, "Kore" ≈ 198 Hz in bench_voices). ~0.7 s slower first audio than Cartesia.
+    "D": lambda: {
+        "stt": inference.STT(model="speechmatics/oak-1", language="multi"),
+        "llm": inference.LLM(model=LLM_MODEL),
+        "tts": inference.TTS(
+            model="google/gemini-3.8-flash-tts",
+            voice=os.getenv("GEMINI_VOICE", "Leda"),
+            language="hi",
+        ),
     },
 }
+
+# Listening (2026-11-20 tuning): callers pause mid-sentence ("Mujhe... 2 BHK chahiye"), and the
+# default 0.5 s silence ended their turn early. Dynamic endpointing starts at 0.8 s and adapts to
+# the caller's own pause pattern; 2.5 s caps the wait. Short backchannels ("haan", "hmm") while
+# Riya speaks no longer interrupt her.
+ENDPOINTING_MIN = float(os.getenv("ENDPOINTING_MIN", "0.8"))
+ENDPOINTING_MAX = float(os.getenv("ENDPOINTING_MAX", "2.5"))
 
 INSTRUCTIONS = """
 Aap "Riya" hain, ek property consultancy ki friendly phone assistant. Caller ne abhi call kiya hai
 aur team ka koi member free nahi tha, isliye aap baat kar rahi hain.
 
 Bolne ka tareeka:
+- Aap ek Indian ladki ki tarah, garamjoshi aur izzat se baat karein ("ji", "aap").
 - Natural Hinglish mein baat karein — jis bhasha mein caller bole (Hindi, English ya mix), usi mein.
 - Chhote, simple sentences. Ek baar mein ek hi sawaal. Koi emoji, list, ya symbols nahi.
 - Numbers bolkar kahein ("pachas lakh", "fifty lakh"), digits nahi.
@@ -158,7 +182,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     parts = COMBOS[combo]()
     session: AgentSession = AgentSession(
         **parts,
-        turn_handling=TurnHandlingOptions(turn_detection=inference.TurnDetector()),
+        turn_handling=TurnHandlingOptions(
+            turn_detection=inference.TurnDetector(),
+            endpointing={
+                "mode": "dynamic",
+                "min_delay": ENDPOINTING_MIN,
+                "max_delay": ENDPOINTING_MAX,
+            },
+            interruption={"min_duration": 0.6, "min_words": 2},
+        ),
     )
 
     @session.on("metrics_collected")

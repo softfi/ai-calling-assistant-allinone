@@ -38,6 +38,16 @@ listen** to `results/audio/*.wav` and score 1–5.
 Inference (one bill, one key). Estimated response latency ≈ EOU delay + 0.66 + 0.51 s; live calls
 must confirm EOU/turn-detection delay keeps the p50 under 1.2 s.
 
+## 4. Live mic test (Dev, 2026-11-19) — combo A, 22 turns
+- Response latency p50 **1.18 s** (target < 1.2 s), p90 3.11 s. Components p50: EOU 0.58, LLM 0.41, TTS 0.15 s. The tail is all end-of-turn detection (2.5–5.1 s on 3 turns).
+- Transfer to human worked (2×). No full qualification completed yet.
+- Dev feedback: (1) voice is **male** — Riya must be female; (2) **American accent** — must sound Indian; (3) the bot **cuts in before the caller finishes** a sentence.
+
+## 5. Tuning (2026-11-20)
+- Voice gender by pitch (`bench_voices.py`): Cartesia default 139 Hz (male), community Hindi ids ac7ee4fa/7f423809 male; Gemini **Leda 216 Hz, Kore 198 Hz, Aoede 168 Hz (female)**, first audio 1.2–1.3 s. No public source lists ids for Cartesia's Indian female voices (Arushi, Riya, Aarti, …) → Dev picks one at play.cartesia.ai → `CARTESIA_VOICE`. Sarvam Bulbul (native Indian female speakers) needs `SARVAM_API_KEY`.
+- New combo **D** = Oak-1 + Gemma 4 + Gemini TTS "Leda" (female, works now; ~0.7 s slower first audio than Cartesia).
+- Listening: endpointing **dynamic, min 0.8 s / max 2.5 s** (was fixed 0.5 / 3.0) so mid-sentence pauses don't end the turn and long waits are capped; interruptions need ≥ 0.6 s and ≥ 2 words (backchannels like "haan" no longer cut Riya off). Tunable via `ENDPOINTING_MIN/MAX`.
+
 ## Still to do
 - Live conversations (mic or phone) per combo → real EOU delay, barge-in, p50/p90 (`summarize.py`).
 - Sarvam (combo B) once `SARVAM_API_KEY` is available — the Indian-built alternative.

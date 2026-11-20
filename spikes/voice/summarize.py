@@ -35,7 +35,9 @@ def turns(path: Path) -> list[dict[str, float]]:
         turn = by_speech[speech]
         if kind in ("eou_metrics", "EOUMetrics"):
             turn["eou"] = row["end_of_utterance_delay"]
-        elif kind in ("llm_metrics", "LLMMetrics") and "llm" not in turn:  # first LLM call of the turn
+        elif (
+            kind in ("llm_metrics", "LLMMetrics") and "llm" not in turn
+        ):  # first LLM call of the turn
             turn["llm"] = row["ttft"]
         elif kind in ("tts_metrics", "TTSMetrics") and "tts" not in turn:
             turn["tts"] = row["ttfb"]
