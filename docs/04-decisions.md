@@ -18,8 +18,18 @@ Status: Accepted · Decision: tenant_id + forced RLS + non-owner app role + leak
 ## ADR-006 Session auth (httpOnly cookie) built in-house
 Status: Accepted · Decision: argon2id passwords, opaque session tokens hashed in DB, CSRF protection, rate-limited login; phone OTP login post-MVP. · Revisit when: SSO/SAML demanded.
 
-## ADR-007 Telephony + voice stack — PENDING (decided by S1 spike)
-Fill in after S1: provider, integration mode (SIP trunk into LiveKit vs provider media-stream WebSocket), STT/TTS/LLM choices, measured latency and ₹/min.
+## ADR-007 Telephony + voice stack
+Status: **Proposed (draft, 2026-11-20)** — accept after S1-T3 on a real number. · Evidence: `docs/spikes/s1-provider-matrix.md` (S1-T1), `docs/spikes/s1-benchmark.md` (S1-T4), `spikes/voice/FINDINGS.md`.
+- **Context:** Indian SMB inbound leads; human-first ring (20 s) then AI fallback; Hindi/English/Hinglish; < 1.2 s p50 response; TRAI requires India calls' media anchored in India; only KYC'd India-registered businesses get domestic numbers (Twilio can't serve domestic calls).
+- **Decision (proposed):**
+  - **Telephony: Plivo** (India data region), landline-series numbers (service/transactional), ₹0.38/min in/out, 30-s pulse, ₹200/number/month. **Exotel** (licensed VNO) as second provider, both behind `TelephonyProvider` in `apps/api/src/providers/telephony` (+ `FakeTelephony`).
+  - **Mode: SIP trunk into LiveKit Cloud, region-pinned to India** (not the provider's WebSocket media stream): one media path for human and AI legs, LiveKit warm transfer (needs only an outbound trunk, no SIP REFER), recordings via LiveKit egress, provider-agnostic.
+  - **Human-first in our code:** inbound call lands in a LiveKit room (ringback/hold audio) → worker dials the assigned agent via the outbound trunk (`CreateSIPParticipant`, ring timeout per tenant, default 20 s) → answered: bridge, no AI; not answered/busy: AI agent joins. Same path for "transfer to human" from the AI.
+  - **Voice: Gemini 3.8 Live (speech-to-speech, voice Leda) via LiveKit Inference** as default (natural Hinglish, female voice, ≈ ₹3.2/AI-min incl. telephony); **pipeline Speechmatics Oak-1 → Gemma 4 31B → Cartesia Sonic-3** as fallback (measured p50 1.23 s, ≈ ₹5.6/AI-min, needs an Indian female voice). Behind `VoiceStack` config per tenant; ai-coustics Quail noise suppression on; Krisp telephony noise cancellation evaluated in M3.
+- **Consequences:** one vendor (LiveKit Cloud) carries media, SIP, inference and agent hosting — simple bill, but a LiveKit India outage has no failover (India-pinned projects can't fall back to Dubai for Indian numbers) → M3 needs a degraded mode (provider-side forward to the human / voicemail when the SIP leg fails). Gemini Live is a single-vendor black box (less control over endpointing, tools and per-stage metrics). AI-min cost is dominated by the model, not telephony.
+- **Open questions:** Plivo/Exotel SIP REFER support (cold transfer); Gemini Live perceived latency and tool-call reliability on 8 kHz phone audio; Cartesia/Sarvam Indian female voice for the pipeline; recording + AI-disclosure announcement placement (provider vs LiveKit); sub-processor data location for Google/Speechmatics/Cartesia (DPDP); real ₹ on the first invoice vs list prices; outbound callbacks CLI = same landline number (service calls only, consent recorded).
+- **S1-T3 must verify (real number):** (1) inbound PSTN → Plivo → LiveKit India SIP connects, no 4590/503; (2) human-first ring 20 s → AI fallback, and busy/reject → AI; (3) AI → warm transfer to a mobile, caller audio continuous; (4) EOU → first audio p50 for G and A on phone audio (≥ 10 calls each, Hinglish, noise); (5) recording + disclosure; (6) outbound callback shows our number as CLI; (7) per-call cost from provider + LiveKit dashboards.
+- **Revisit when:** S1-T3 fails any of 1–4, LiveKit pricing changes, or volume makes self-hosted Indic STT/TTS (later benchmark) cheaper.
 
 ## ADR-008 Hosting — PENDING (decide in M8)
 

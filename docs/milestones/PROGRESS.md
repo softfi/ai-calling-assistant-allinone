@@ -200,6 +200,7 @@ Plan approved 2026-11-04. M0-T1, M0-T2 done 2026-11-04; M0-T3, M0-T4 done 2026-1
 
 ## In progress
 - [ ] S1 voice spike — S1-T2 bot scaffolded (2026-11-19): Hinglish qualification bot on LiveKit Agents 1.8.13 with `save_qualification` / `transfer_to_human` tools; three pipelines (A: LiveKit Inference Deepgram Nova-3 multi + Gemma 4 + Cartesia Sonic-3 hi; B: Sarvam Saaras v4 codemix + Bulbul v4 flash; C: Inference GPT-Live Transcribe + Gemini flash-lite + Gemini TTS); per-turn latency logged + `summarize.py` (p50/p90). LiveKit keys in (India South). No-mic benchmarks done 2026-11-19 (`spikes/voice/FINDINGS.md`): LLM Gemma 4 TTFT p50 0.66 s (all 3 models saved the qualification correctly); TTS Cartesia Sonic-3 0.51 s first audio (Gemini 1.37, Inworld 1.92); STT Speechmatics Oak-1 near-perfect on Hinglish, Deepgram Nova-3 multi fails (decodes as Indonesian) → combo A now Oak-1 + Gemma 4 + Cartesia. Next: live mic calls for real EOU latency, Dev listens to WAVs, Sarvam key for combo B. Next: run A/B/C in the playground, S1-T1 provider matrix, S1-T3 real number, S1-T4 benchmark, S1-T5 ADR-007.
+  - 2026-11-20: noise test in the browser Agent Console (Dev): Quail clearly better than console mode → stays default; Voice Focus not needed now (revisit on phone calls; Krisp telephony → M3 design). **S1-T1 done** (`docs/spikes/s1-provider-matrix.md`): Plivo top-1 (₹0.38/min in/out, 30-s pulse, ₹200/month number, KYC with one business doc), Exotel fallback (prices on quote), Twilio out (no domestic Indian numbers). **S1-T4 write-up** (`docs/spikes/s1-benchmark.md`): A p50 1.23 s, ≈ ₹5.6/AI-min; G (Gemini Live) ≈ ₹3.2/AI-min, latency still to measure on phone; open-source GPU baseline deferred (needs a paid GPU account). **ADR-007 drafted (Proposed)**: Plivo SIP → LiveKit India, human-first ring in our worker, Gemini Live default + pipeline fallback. Next: S1-T3 (Dev: Plivo account + KYC), then accept ADR-007 (S1-T5).
 
 ## Assumptions made
 _(Claude logs product assumptions here — Dev reviews at each checkpoint)_
@@ -423,6 +424,8 @@ _(Claude logs product assumptions here — Dev reviews at each checkpoint)_
 - [ ] Telephony provider KYC + numbers
 - [ ] S1: LiveKit Cloud project (free tier) — LIVEKIT_URL / API key / secret in `spikes/voice/.env.local` (also unlocks LiveKit Inference for combos A and C)
 - [ ] S1: Sarvam AI API key (combo B); a Hindi Cartesia voice id (combo A, optional)
+- [ ] S1-T3: Plivo account in the **India data region** + India number KYC (GST cert, COI or Udyam; signed & sealed) + one landline-series number (₹200/month) + ~₹500 prepaid credit
+- [ ] S1-T4 (later): GPU account for the open-source Indic STT/TTS baseline (deferred)
 - [ ] Legal review (DPDP, consent texts)
 - [ ] Segment decision + design partners
 - [ ] Dev: install pgvector on the local Postgres 18 before M4 (optional until then)
