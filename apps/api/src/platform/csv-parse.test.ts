@@ -62,6 +62,18 @@ describe('parseCsv', () => {
     }
   });
 
+  it('aborts as soon as a record has more than maxFields fields (any row, not just the header)', () => {
+    expect([...parseCsv('a,b,c\n1,2,3\n', { maxFields: 3 })]).toEqual([
+      ['a', 'b', 'c'],
+      ['1', '2', '3'],
+    ]);
+    const wide = `a,b\n${','.repeat(1_000_000)}\n`;
+    expect(() => Array.from(parseCsv(wide, { maxFields: 3 }))).toThrow(
+      expect.objectContaining({ name: 'Error', line: 2 }) as CsvParseError,
+    );
+    expect(() => Array.from(parseCsv(wide, { maxFields: 3 }))).toThrow(CsvParseError);
+  });
+
   it('round-trips what csvDocument writes (incl. formula escaping)', () => {
     const rows = [
       ['name', 'note'],

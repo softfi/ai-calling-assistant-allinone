@@ -1,0 +1,74 @@
+[
+  {
+    "model": "google/gemma-4-31b-it",
+    "ttft_p50": 0.655819799983874,
+    "ttft_max": 3.443351299967617,
+    "llm_calls": 5,
+    "saved": {
+      "budget": "pachas lakh",
+      "language": "hinglish",
+      "requirement": "2 BHK flat in Gomti Nagar or Indira Nagar",
+      "timeline": "three months, before Diwali"
+    },
+    "checks": {
+      "budget": true,
+      "timeline": true
+    },
+    "transferred": false,
+    "replies": [
+      "Hello! Main Riya baat kar rahi hoon. Zarur, aap mujhe bata sakte hain ki aapko kis area mein flat chahiye?",
+      "Theek hai, Gomti Nagar ya Indira Nagar mein two BHK. Aapka budget kitna hai?",
+      "Samajh gayi, pachas lakh ke aas paas. Aap ye property kab tak lena chahte hain?",
+      "Theek hai, maine saari details note kar li hain. Hamari team jaldi hi aapko call back karegi. Thank you!"
+    ],
+    "wall_s": 12.94
+  },
+  {
+    "model": "google/gemini-3.5-flash-lite",
+    "ttft_p50": 1.0359592998865992,
+    "ttft_max": 3.553977300063707,
+    "llm_calls": 5,
+    "saved": {
+      "budget": "pachas lakh",
+      "language": "hinglish",
+      "requirement": "2 BHK flat in Gomti Nagar or Indira Nagar",
+      "timeline": "within three months, before Diwali"
+    },
+    "checks": {
+      "budget": true,
+      "timeline": true
+    },
+    "transferred": false,
+    "replies": [
+      "Hello! Main Riya bol rahi hoon property consultancy se. Flat aapko kaunse area mein chahiye?",
+      "Achha, Gomti Nagar ya Indira Nagar mein two BHK. Aapka budget kitna hai iske liye?",
+      "Samajh gayi, pachas lakh ke aaspaas. Aap yeh flat kab tak lena chahte hain?",
+      "Bahut badhiya. Maine aapki saari details note kar li hain. Hamari team se koi aapko jald hi call back karega. Call karne ke liye shukriya!"
+    ],
+    "wall_s": 8.82
+  },
+  {
+    "model": "openai/gpt-5.4-mini",
+    "ttft_p50": 0.9529628000454977,
+    "ttft_max": 1.4297416999470443,
+    "llm_calls": 5,
+    "saved": {
+      "budget": "pachas lakh, thoda upar",
+      "language": "hinglish",
+      "requirement": "2 BHK flat, Gomti Nagar ya Indira Nagar side mein",
+      "timeline": "within three months, ideally Diwali se pehle"
+    },
+    "checks": {
+      "budget": true,
+      "timeline": true
+    },
+    "transferred": false,
+    "replies": [
+      "Bilkul. Kaunsa area chahiye aapko?",
+      "Theek hai. Aapka budget kitna hai?",
+      "Theek hai. Kab tak lena chahte hain?",
+      "Thank you. Team aapko jaldi call back karegi."
+    ],
+    "wall_s": 5.45
+  }
+]
