@@ -1,0 +1,105 @@
+{
+  "tts": [
+    {
+      "model": "cartesia/sonic-3",
+      "ttfb_p50": 0.5115339500480331,
+      "ttfb_all": [
+        0.68,
+        0.594,
+        0.417,
+        0.429
+      ],
+      "error": null
+    },
+    {
+      "model": "google/gemini-3.8-flash-tts",
+      "ttfb_p50": 1.3653864999650978,
+      "ttfb_all": [
+        1.745,
+        1.335,
+        0.996,
+        1.396
+      ],
+      "error": null
+    },
+    {
+      "model": "inworld/inworld-tts-2-flash",
+      "ttfb_p50": 1.9189094500616193,
+      "ttfb_all": [
+        1.956,
+        0.973,
+        1.882,
+        2.159
+      ],
+      "error": null
+    }
+  ],
+  "stt": [
+    {
+      "model": "deepgram/nova-3",
+      "audio_from": "cartesia/sonic-3",
+      "rows": [
+        {
+          "source": "Namaste, main Riya bol rahi hoon. Aapko kaunse area mein flat chahiye?",
+          "heard": "Namaste, Maria Bolrion Aku konservatorium inflight saya."
+        },
+        {
+          "source": "नमस्ते, मैं रिया बोल रही हूँ। आपको कौनसे एरिया में फ्लैट चाहिए?",
+          "heard": "Namaste. Maria boleh hilang? Apako कौन se area में flat चाहिए?"
+        },
+        {
+          "source": "Samajh gayi, pachas lakh ke aas paas. Aap ye property kab tak lena chahte hain?",
+          "heard": "Semajgai, pecah laki aspas. Apa dia properti ketik lain acak tahan?"
+        },
+        {
+          "source": "Theek hai, maine saari details note kar li hain. Hamari team jaldi call back karegi.",
+          "heard": "Tika mendasari details note kalinya. Hamari tim jaldi callback karena"
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-live-transcribe",
+      "audio_from": "cartesia/sonic-3",
+      "rows": [
+        {
+          "source": "Namaste, main Riya bol rahi hoon. Aapko kaunse area mein flat chahiye?",
+          "heard": "Namaste, Maria बोल रही हूँ, आपको कौन से area में flat चाहिए?"
+        },
+        {
+          "source": "नमस्ते, मैं रिया बोल रही हूँ। आपको कौनसे एरिया में फ्लैट चाहिए?",
+          "heard": "Namaste, मैं रिया बोल रही हूँ, आपको कौन से एरिया में फ्लैट चाहिए?"
+        },
+        {
+          "source": "Samajh gayi, pachas lakh ke aas paas. Aap ye property kab tak lena chahte hain?",
+          "heard": "समझ गई, पचास लाख के आसपास। अब ये प्रॉपर्टी कब तक लेना चाहते हैं?"
+        },
+        {
+          "source": "Theek hai, maine saari details note kar li hain. Hamari team jaldi call back karegi.",
+          "heard": "Take care, write sari details note कर ली हैं। हमारी टीम जल्दी कॉल बैक करेगी।"
+        }
+      ]
+    },
+    {
+      "model": "speechmatics/oak-1",
+      "audio_from": "cartesia/sonic-3",
+      "rows": [
+        {
+          "source": "Namaste, main Riya bol rahi hoon. Aapko kaunse area mein flat chahiye?",
+          "heard": "नमस्ते, मैं रिया बोल रही हूँ। आपको कौन से एरिया में flat चाहिए?"
+        },
+        {
+          "source": "नमस्ते, मैं रिया बोल रही हूँ। आपको कौनसे एरिया में फ्लैट चाहिए?",
+          "heard": "नमस्ते, मैं रिया बोल रही हूँ, आपको कौन से area में flat चाहिए?"
+        },
+        {
+          "source": "Samajh gayi, pachas lakh ke aas paas. Aap ye property kab tak lena chahte hain?",
+          "heard": "समझ गई, पचास लाख के आसपास। आप ये property कब तक लेना चाहते हैं?"
+        },
+        {
+          "source": "Theek hai, maine saari details note kar li hain. Hamari team jaldi call back karegi.",
+          "heard": "ठीक है, मैंने सारी details note कर ली है। हमारी team जल्दी call back करेगी।"
+        }
+      ]
+    }
+  ]
+}
