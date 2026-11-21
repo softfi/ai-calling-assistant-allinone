@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current
-Milestone: M2 — Lead Capture & Dedupe. Branch: `milestone/m2-lead-capture`, cut 2026-11-17 from the tip of `milestone/m1-crm-core` (44b37dc): PR #2 was still open and tag `m1-done` points at the M0 merge (5f428c5); `gh pr merge` was denied by permissions. **Dev to do:** merge PR #2, move `m1-done` to the merge commit. M2-T0 done 2026-11-17. M2 plan approved 2026-11-17 (order: T1 → T4 → T6 → T2 → T3 → T5, sequential; plan incl. threat model in `docs/milestones/M2-lead-capture.md` tasks). M2-T1, M2-T4, M2-T6 done 2026-11-17; M2-T2, M2-T3 done 2026-11-18; M2-T3 review changes and M2-T5 done 2026-11-19. PR #2 merged by Dev (a655812). Next: `/review-milestone M2`.
+Milestone: M2 — Lead Capture & Dedupe. Branch: `milestone/m2-lead-capture`, cut 2026-11-17 from the tip of `milestone/m1-crm-core` (44b37dc): PR #2 was still open and tag `m1-done` points at the M0 merge (5f428c5); `gh pr merge` was denied by permissions. **Dev to do:** merge PR #2, move `m1-done` to the merge commit. M2-T0 done 2026-11-17. M2 plan approved 2026-11-17 (order: T1 → T4 → T6 → T2 → T3 → T5, sequential; plan incl. threat model in `docs/milestones/M2-lead-capture.md` tasks). M2-T1, M2-T4, M2-T6 done 2026-11-17; M2-T2, M2-T3 done 2026-11-18; M2-T3 review changes and M2-T5 done 2026-11-19. PR #2 merged by Dev (a655812). M2 merged to main as PR #3 (tag `m2-done`) without review; milestone review done 2026-11-21 on `fix/m2-review` (3 fixes, see Done). Next: Dev merges the fix PR, decides DPDP erasure scope for raw payloads (Tech debt) → `/start-milestone M3`.
 
 M1 history:
 Milestone: M1 — CRM Core. Branch: `milestone/m1-crm-core` (from main after M0 merged, tag `m0-done`).
@@ -197,6 +197,11 @@ Plan approved 2026-11-04. M0-T1, M0-T2 done 2026-11-04; M0-T3, M0-T4 done 2026-1
 
 - [x] UI refresh (2026-11-19, Dev request between M2-T5 and the M2 review; plan approved): indigo theme + Inter (`@fontsource-variable/inter`, bundled locally), new sidebar/header (logo, account card, breadcrumb, quick "Add lead"), split sign-in pages, live dashboard (`GET /v1/dashboard/summary` + KPI tiles, leads by source, recent leads, get-started checklist), compact leads toolbar ("More filters" panel for dates/fields), restyled table/board/lead detail/timeline/lead sources. Fixed: the board widened the whole page (hidden native selects escaped the scroll container) and the lead timeline stretched to the sidebar's height. Tests: `dashboard.int.test.ts` (5), shared `topSources` (3), web formatting helpers (16); accessible names kept, so e2e specs are unchanged.
   - Toasts (Dev, 2026-11-19): sign-in ("Welcome back, <name>"), sign-out and invitation accepted now show a toast (other actions already did); toasts restyled to the theme (card, coloured accent bar and icon per type, bottom-right on desktop, top on phones).
+
+- [x] M2 milestone review (2026-11-21, post-merge on `fix/m2-review`; code-reviewer + security-auditor, sonnet, on `m1-done..m2-done`). Fixed:
+  - Webhook: a signed but schema-invalid delivery stored its event id, so the sender's corrected retry with the same id got `200 duplicate` and no lead (silent loss). Failed rows now store no event id (id stays in the payload). Test: corrected retry → lead.
+  - Webhook: the per-source bucket (600/h) was spent before authentication — anyone with the public URL could 429 a tenant's real sender. Rejected deliveries now have their own bucket (`public-webhook-rejected`, 600/h); the source bucket counts authenticated deliveries only. Test: junk exhausts its bucket, signed delivery still 202; source bucket still enforced.
+  - CSV: the 100-column cap applied to the header only; a 10 MB one-row file of commas built millions of strings on the HTTP thread and in the worker. The parser now aborts as soon as any record exceeds `maxColumns` (422 `csv_unreadable`). Unit test.
 
 ## In progress
 
@@ -469,3 +474,19 @@ _M1 milestone review (2026-11-17): code-reviewer + security-auditor (sonnet) on 
 - ~~Security LOW: `bin/seed.ts` refuses only on `NODE_ENV=production`~~ **Fixed M2-T0**; add the `_dev`/`_test` + localhost guard used by `reset-dev`.
 - `contacts` create/update and `changeLeadStageRequestSchema` use `z.object` (strips unknown keys) where others are strict; switch to `strictObject` for consistency.
 - Local tooling: the Bash/system PATH resolves Node 24 (`C:\Program Files\nodejs`); run `fnm use 22` first or every pnpm command fails on `engine-strict`.
+
+_M2 milestone review (2026-11-21): non-blocking findings (code-reviewer + security-auditor). Blockers fixed in the review PR._
+- **DPDP: raw PII copies outside erasure (security MEDIUM; Dev decision needed before a delete flow ships, M3/M8).** `inbound_webhooks.payload` (30 d), rejected excerpts (7 d, also returned by the rejected-deliveries endpoint) and `csv_import_errors.cells` (never purged) keep full name/phone/email. Options: scrub payload PII after processing (keep id/status), and/or include these tables in contact erasure; purge error cells with the CSV retention job.
+- **CSV identity spans imports (code-review MAJOR, kept by design).** Row key = source + row cells, permanent: re-uploading a file — or a later file with an identical row — creates no re-enquiry/new lead even if the earlier lead is closed now; identical rows in one file collapse silently. Matches the AC ("re-running same file doesn't duplicate"); consider reporting skipped rows as "duplicate of import X" and revisit with Dev.
+- **Form quotas burnable by a scripted Origin (security MEDIUM).** Embed key is public and Origin is not authentication; 300/h per source, 5000/day per tenant can be exhausted, and honeypot drops count toward them. Verify captcha before the source/tenant buckets, give spam drops their own bucket, alert on 429 spikes.
+- **Purge definer takes caller cutoffs (security MEDIUM, defence in depth).** `capture_purge_inbound_webhooks` (0037) is EXECUTE for app_user and deletes cross-tenant with any cutoff. Clamp inside the function (≥ 7 d / 30 d before `now()`) — the API purge tests drive cutoffs from the fake clock, so they need rework — or grant to a worker-only role.
+- **Terminal state after job retries (code-review MINOR).** Non-domain failures in `capture.webhook-process` / `capture.csv-import` (e.g. tenant without an active pipeline, ZodError on a stored payload) leave the row `received` / `processing` forever after pg-boss's 3 retries. Mark `failed` on the last attempt.
+- **Round-robin cursor lock held for the whole intake tx** (code-review MINOR): a 250-row CSV batch blocks form/webhook intake for that tenant meanwhile. Smaller CSV transactions or accept.
+- **Phone/email conflict not surfaced** (phone → contact A, email → contact B: B ignored) and matched contacts aren't enriched with missing fields (Dev decision M2-T4 kept). Consider a merge-candidate flag.
+- Honeypot/min-fill skippable by omitting `_hp`/`_ts` (soft control; captcha is the gate). Require `_ts` on sources without captcha.
+- Public body reader answers 413 but doesn't `req.destroy()`; over-limit bodies are read before the IP limit. Destroy + `Connection: close`, and check the IP limit first.
+- No `X-Content-Type-Options: nosniff` (no helmet) on the API — matters for `embed.js` and `errors.csv`.
+- Public keys appear in request-log paths (`/v1/public/(forms|webhooks)/<key>`); in token mode the key is half the credential. Redact in the `req` serializer.
+- No S3 `StorageProvider` yet (prod would fall back to local disk with PII); required before production and before M3 recordings. Unstarted uploads keep their file (see Import retention).
+- `Vary: Origin` only on allowed-origin responses; add it to denied/429/404 public responses for cache hygiene.
+- Contact merge tests: assert notes/tasks follow, soft-deleted leads move, alt-phone semantics (coverage thin per code review).

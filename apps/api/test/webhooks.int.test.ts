@@ -218,6 +218,22 @@ describe('POST /v1/public/webhooks/:publicKey', () => {
     expect(failed.some((r) => r.payload.raw === 'this is not json')).toBe(true);
   });
 
+  it('an invalid payload does not claim its event id: the corrected retry creates the lead', async () => {
+    const p = phone();
+    const id = `evt_fixed_${p}`;
+    await deliver({ id, phone: 9876543210 }).expect(400); // phone must be a string
+    const retry = await deliver({ id, name: 'Fixed Sender', phone: p }).expect(202);
+    expect(retry.body).toEqual({ ok: true, duplicate: false });
+    await t.drain();
+    await t.drain();
+    expect(await leadByPhone(p)).toMatchObject({ contact: { name: 'Fixed Sender' } });
+    const failed = (await rows()).filter(
+      (r) => r.error === 'invalid_payload' && r.payload.id === id,
+    );
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.external_event_id).toBeNull();
+  });
+
   it('a payload without a usable phone/email is accepted, then fails in the job (no lead, no retry)', async () => {
     const id = `evt_unusable_${Date.now()}`;
     await deliver({ id, name: 'No contact', phone: '12' }).expect(202);
@@ -247,23 +263,34 @@ describe('POST /v1/public/webhooks/:publicKey', () => {
     await deliver({ id: 'big', phone: phone(), fields: { note: 'x'.repeat(66_000) } }).expect(413);
   });
 
-  it('per-source rate limit covers rejected deliveries too → 429', async () => {
-    const { source: limited } = (
+  it('rejected deliveries have their own per-source bucket and never spend the sender quota', async () => {
+    const { source: limited, webhookSecret } = (
       await api(owner).post('/v1/lead-sources', { name: 'Limited hook', type: 'api' }).expect(201)
     ).body as LeadSourceWithSecret;
-    const { limit, windowMs } = WEBHOOK_LIMITS.source;
     const limiter = t.app.get(RateLimiter);
-    for (let i = 0; i < limit; i += 1) {
-      await limiter.consume(`public-webhook-source:${limited.id}`, limit, windowMs);
+    const rejected = WEBHOOK_LIMITS.rejected;
+    for (let i = 0; i < rejected.limit; i += 1) {
+      await limiter.consume(`public-webhook-rejected:${limited.id}`, rejected.limit, rejected.windowMs);
     }
     const res = await deliver(
       { id: 'x', phone: phone() },
-      {
-        key: limited.publicKey,
-        signature: null,
-      },
+      { key: limited.publicKey, signature: null },
     ).expect(429);
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+    // Junk exhausted its bucket, the real sender still gets through.
+    await deliver(
+      { id: `evt_ok_${phone()}`, phone: phone() },
+      { key: limited.publicKey, secret: webhookSecret },
+    ).expect(202);
+    // The authenticated bucket is enforced for signed deliveries.
+    const { limit, windowMs } = WEBHOOK_LIMITS.source;
+    for (let i = 0; i < limit; i += 1) {
+      await limiter.consume(`public-webhook-source:${limited.id}`, limit, windowMs);
+    }
+    await deliver(
+      { id: `evt_late_${phone()}`, phone: phone() },
+      { key: limited.publicKey, secret: webhookSecret },
+    ).expect(429);
   });
 
   it('re-running the job for a processed delivery does nothing', async () => {

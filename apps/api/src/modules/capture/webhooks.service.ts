@@ -34,12 +34,14 @@ import {
 const MINUTE = 60 * 1000;
 
 /**
- * Ceilings for the webhook endpoint (M2-T3): per IP before any lookup, and per source for every
- * delivery — valid or not — so a leaked URL can't fill the table with rejected rows.
+ * Ceilings for the webhook endpoint (M2-T3): per IP before any lookup; per source for
+ * authenticated deliveries only; and a separate per-source bucket for rejected ones (M2 review):
+ * the public key is in the URL, so unauthenticated junk must not spend the sender's quota.
  */
 export const WEBHOOK_LIMITS = {
   ip: { limit: 120, windowMs: MINUTE },
   source: { limit: 600, windowMs: 60 * MINUTE },
+  rejected: { limit: 600, windowMs: 60 * MINUTE },
 } as const;
 
 /** Raw deliveries are kept this long (PII retention), then purged. */
@@ -127,7 +129,6 @@ export class WebhooksService {
     if (!PUBLIC_KEY_PATTERN.test(input.publicKey)) throw notFound();
     const source = await this.repository.resolveWebhookSource(input.publicKey);
     if (!source) throw notFound();
-    await this.limit(`public-webhook-source:${source.sourceId}`, WEBHOOK_LIMITS.source);
 
     const secret = this.secrets.decrypt(
       source.secretEnc,
@@ -149,6 +150,7 @@ export class WebhooksService {
     const tenant = { tenantId: source.tenantId };
 
     if (failure) {
+      await this.limit(`public-webhook-rejected:${source.sourceId}`, WEBHOOK_LIMITS.rejected);
       // Stored for debugging, but capped: an unauthenticated sender must not fill the table.
       const overCap = await this.limiter.consume(
         `public-webhook-rejected-store:${source.sourceId}`,
@@ -175,16 +177,19 @@ export class WebhooksService {
         : new DomainError('invalid_signature', 401, 'Invalid or missing webhook signature');
     }
 
+    // Authenticated from here: only the sender itself can spend this source's quota.
+    await this.limit(`public-webhook-source:${source.sourceId}`, WEBHOOK_LIMITS.source);
+
     const parsed = webhookLeadPayloadSchema.safeParse(input.body);
     if (!parsed.success) {
-      const id = (input.body as { id?: unknown } | undefined)?.id;
-      const externalEventId =
-        typeof id === 'string' && id.trim().length > 0 && id.length <= 200 ? id.trim() : null;
+      // No event id on a failed row: it must not claim the id (partial unique index), or the
+      // sender's corrected retry with the same id would be answered "duplicate" and dropped.
+      // The id stays visible in the stored payload.
       await this.database.withContext(tenant, (tx) =>
         this.repository.insertWebhook(tx, {
           tenantId: source.tenantId,
           sourceId: source.sourceId,
-          externalEventId,
+          externalEventId: null,
           signatureValid: true,
           payload: storable(input.body, input.rawBody),
           status: 'failed',

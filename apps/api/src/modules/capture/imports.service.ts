@@ -123,7 +123,9 @@ interface ParsedFile {
 export function readCsvFile(bytes: Buffer): ParsedFile {
   const records: string[][] = [];
   try {
-    for (const record of parseCsv(decodeCsv(bytes))) {
+    for (const record of parseCsv(decodeCsv(bytes), {
+      maxFields: CSV_IMPORT_LIMITS.maxColumns,
+    })) {
       records.push(record);
       if (records.length > CSV_IMPORT_LIMITS.maxRows + 1) {
         throw new DomainError(

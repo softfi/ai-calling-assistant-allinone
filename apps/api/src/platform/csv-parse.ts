@@ -6,6 +6,8 @@
  */
 export interface CsvParseOptions {
   delimiter?: ',' | ';';
+  /** Abort (CsvParseError) as soon as a record has more fields than this (memory/CPU bound). */
+  maxFields?: number;
 }
 
 export class CsvParseError extends Error {
@@ -35,6 +37,7 @@ export function detectDelimiter(text: string): ',' | ';' {
 export function* parseCsv(input: string, options: CsvParseOptions = {}): Generator<string[]> {
   const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
   const delimiter = options.delimiter ?? detectDelimiter(text);
+  const maxFields = options.maxFields ?? Number.POSITIVE_INFINITY;
   let field = '';
   let record: string[] = [];
   let quoted = false;
@@ -73,6 +76,9 @@ export function* parseCsv(input: string, options: CsvParseOptions = {}): Generat
       fieldStarted = true;
       quoteLine = line;
     } else if (ch === delimiter) {
+      if (record.length + 1 >= maxFields) {
+        throw new CsvParseError(`more than ${maxFields} columns`, line);
+      }
       record.push(field);
       field = '';
       fieldStarted = false;
